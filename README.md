@@ -24,13 +24,16 @@ Small standalone Chrome extension demo for preparing Gladiatus healing items for
 The extension also injects a `Market demo` control bar above the market sell container.
 
 1. Choose base price, markup, and duration.
-2. Click `Mark items`.
-3. Click healing items in the visible inventory bag to toggle them for sale.
-4. Click `Put for sale`.
-5. The demo lists one marked item, waits for the market page reload, then continues with the next marked item.
-6. Click `Clear` to stop the queue and remove the current selection.
+2. Click `Save settings` to keep those defaults for future market page loads.
+3. Click `Mark items`.
+4. Hover healing items to preview the calculated market price with the current settings.
+5. Click healing items in the visible inventory bag to toggle them for sale.
+6. Click `Put for sale`.
+7. The demo lists one marked item, waits for the market page reload, then continues with the next marked item.
+8. Click `Clear` to stop the queue and remove the current selection.
 
 Marked items are stored only in the current tab session.
+Saved market settings are stored in the browser for future sessions. If a sale queue is active, its settings are restored instead of the saved defaults.
 
 The default price uses:
 

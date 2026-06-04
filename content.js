@@ -17,8 +17,10 @@
   const MARKET_SELL_BACK_RATIO = 0.276445;
   const MARKET_DEMO_SELECTION_KEY = "gladiatusMarketDemoSelection";
   const MARKET_DEMO_QUEUE_KEY = "gladiatusMarketDemoSaleQueue";
+  const MARKET_SETTINGS_KEY = "gladiatusMarketSettings";
   const MARKET_DEMO_CONTROLS_ID = "gladiatus-market-demo-controls";
   const MARKET_DEMO_STYLE_ID = "gladiatus-market-demo-style";
+  const MARKET_DEMO_PRICE_PREVIEW_ID = "gladiatus-market-demo-price-preview";
   const MARKET_HEALING_ITEM_BASIS = new Set([
     "food"
   ]);
@@ -151,6 +153,24 @@
         color: #f4d58a;
       }
 
+      #${MARKET_DEMO_PRICE_PREVIEW_ID} {
+        position: fixed;
+        z-index: 99999;
+        max-width: 220px;
+        padding: 6px 8px;
+        border: 1px solid #9c7a43;
+        background: #1b120b;
+        color: #f7e7c4;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+        font: 12px Arial, sans-serif;
+        line-height: 1.35;
+        pointer-events: none;
+      }
+
+      #${MARKET_DEMO_PRICE_PREVIEW_ID} strong {
+        color: #ffd36a;
+      }
+
       .gladiatus-market-demo-selected {
         outline: 2px solid #46d369 !important;
         box-shadow: 0 0 8px #46d369 !important;
@@ -182,6 +202,7 @@
         <strong>Market demo</strong>
         <button type="button" id="gladiatus-market-demo-mark">Mark items</button>
         <button type="button" id="gladiatus-market-demo-sale">Put for sale</button>
+        <button type="button" id="gladiatus-market-demo-save">Save settings</button>
         <button type="button" id="gladiatus-market-demo-clear">Clear</button>
       </div>
       <div class="market-demo-row">
@@ -208,11 +229,24 @@
     `;
 
     sellSection.parentNode.insertBefore(controls, sellSection);
+    applySavedMarketDemoSettingsToControls();
     applyMarketDemoQueueOptionsToControls();
     document.getElementById("gladiatus-market-demo-mark")?.addEventListener("click", toggleMarketDemoMarkMode);
     document.getElementById("gladiatus-market-demo-sale")?.addEventListener("click", startSelectedMarketDemoSaleQueue);
+    document.getElementById("gladiatus-market-demo-save")?.addEventListener("click", saveMarketDemoSettings);
     document.getElementById("gladiatus-market-demo-clear")?.addEventListener("click", clearMarketDemoSelectionAndQueue);
     document.addEventListener("click", handleMarketDemoInventoryClick, true);
+    document.addEventListener("mouseover", handleMarketDemoInventoryPreviewMove, true);
+    document.addEventListener("mousemove", handleMarketDemoInventoryPreviewMove, true);
+    document.addEventListener("mouseout", handleMarketDemoInventoryPreviewOut, true);
+  }
+
+  function applySavedMarketDemoSettingsToControls() {
+    if (getMarketDemoSaleQueue().active) {
+      return;
+    }
+
+    applyMarketDemoSettingsToControls(getSavedMarketDemoSettings());
   }
 
   function applyMarketDemoQueueOptionsToControls() {
@@ -239,6 +273,52 @@
     }
   }
 
+  function applyMarketDemoSettingsToControls(settings = {}) {
+    const pricing = document.getElementById("gladiatus-market-demo-pricing");
+    const markup = document.getElementById("gladiatus-market-demo-markup");
+    const duration = document.getElementById("gladiatus-market-demo-duration");
+
+    if (pricing && ["health", "merchant"].includes(settings.pricingBasis)) {
+      pricing.value = settings.pricingBasis;
+    }
+
+    if (markup && Number.isFinite(Number(settings.markup))) {
+      markup.value = String(Number(settings.markup));
+    }
+
+    if (duration && ["1", "2", "3"].includes(String(settings.duration))) {
+      duration.value = String(settings.duration);
+    }
+  }
+
+  function getSavedMarketDemoSettings() {
+    try {
+      const settings = JSON.parse(localStorage.getItem(MARKET_SETTINGS_KEY) || "{}");
+
+      return {
+        pricingBasis: ["health", "merchant"].includes(settings.pricingBasis)
+          ? settings.pricingBasis
+          : "merchant",
+        markup: Number.isFinite(Number(settings.markup))
+          ? Number(settings.markup)
+          : MARKET_DEFAULT_MARKUP,
+        duration: ["1", "2", "3"].includes(String(settings.duration))
+          ? String(settings.duration)
+          : MARKET_DEFAULT_DURATION
+      };
+    } catch {
+      localStorage.removeItem(MARKET_SETTINGS_KEY);
+      return {};
+    }
+  }
+
+  function saveMarketDemoSettings() {
+    const settings = getMarketDemoInlineOptions();
+
+    localStorage.setItem(MARKET_SETTINGS_KEY, JSON.stringify(settings));
+    updateMarketDemoStatus("Settings saved.");
+  }
+
   function toggleMarketDemoMarkMode() {
     marketDemoMarkMode = !marketDemoMarkMode;
     document.documentElement.classList.toggle("gladiatus-market-demo-marking", marketDemoMarkMode);
@@ -249,9 +329,91 @@
       button.textContent = marketDemoMarkMode ? "Stop marking" : "Mark items";
     }
 
+    if (!marketDemoMarkMode) {
+      hideMarketDemoPricePreview();
+    }
+
     updateMarketDemoStatus(marketDemoMarkMode
       ? "Marking enabled. Click healing items in the visible bag."
       : "");
+  }
+
+  function handleMarketDemoInventoryPreviewMove(event) {
+    if (!marketDemoMarkMode) {
+      hideMarketDemoPricePreview();
+      return;
+    }
+
+    const element = event.target?.closest?.("#inv [data-tooltip][data-position-x][data-position-y]");
+
+    if (!element) {
+      hideMarketDemoPricePreview();
+      return;
+    }
+
+    const item = enrichMarketHealingItem(parseInventoryItemElement(element));
+
+    if (!item?.isHealing || Number(item.estimatedSellValue) <= 0) {
+      hideMarketDemoPricePreview();
+      return;
+    }
+
+    showMarketDemoPricePreview(item, event);
+  }
+
+  function handleMarketDemoInventoryPreviewOut(event) {
+    const element = event.target?.closest?.("#inv [data-tooltip][data-position-x][data-position-y]");
+    const related = event.relatedTarget;
+
+    if (!element || (related instanceof Node && element.contains(related))) {
+      return;
+    }
+
+    hideMarketDemoPricePreview();
+  }
+
+  function showMarketDemoPricePreview(item, event) {
+    const options = getMarketDemoInlineOptions();
+    const base = getMarketPricingBaseGold(item, options);
+    const price = calculateMarketListPrice(base, options);
+    const preview = getMarketDemoPricePreviewElement();
+
+    preview.innerHTML = `
+      <strong>${formatMarketGold(price)} gold</strong><br>
+      Base ${formatMarketGold(base)} (${getMarketPricingBasisLabel(options.pricingBasis)})<br>
+      ${formatMarketMarkup(options.markup)} markup, ${getMarketDurationLabel(options.duration)}
+    `;
+    positionMarketDemoPricePreview(preview, event);
+  }
+
+  function getMarketDemoPricePreviewElement() {
+    let preview = document.getElementById(MARKET_DEMO_PRICE_PREVIEW_ID);
+
+    if (!preview) {
+      preview = document.createElement("div");
+      preview.id = MARKET_DEMO_PRICE_PREVIEW_ID;
+      document.documentElement.appendChild(preview);
+    }
+
+    return preview;
+  }
+
+  function positionMarketDemoPricePreview(preview, event) {
+    const offset = 16;
+    const rect = preview.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - rect.width - 8, event.clientX + offset);
+    const preferredTop = event.clientY - rect.height - offset;
+    const fallbackTop = event.clientY + offset;
+    const top = preferredTop >= 8
+      ? preferredTop
+      : Math.min(window.innerHeight - rect.height - 8, fallbackTop);
+
+    preview.style.left = `${Math.max(8, left)}px`;
+    preview.style.top = `${Math.max(8, top)}px`;
+  }
+
+  function hideMarketDemoPricePreview() {
+    document.getElementById(MARKET_DEMO_PRICE_PREVIEW_ID)?.remove();
   }
 
   function handleMarketDemoInventoryClick(event) {
@@ -676,6 +838,28 @@
     }
 
     return item.estimatedMerchantPrice || item.estimatedSellValue;
+  }
+
+  function getMarketPricingBasisLabel(pricingBasis) {
+    return pricingBasis === "health" ? "HP" : "vendor";
+  }
+
+  function getMarketDurationLabel(duration) {
+    return ({
+      "1": "2 h",
+      "2": "8 h",
+      "3": "24 h"
+    })[String(duration)] || "24 h";
+  }
+
+  function formatMarketMarkup(markup) {
+    return `${Math.round((Number(markup) || 0) * 100)}%`;
+  }
+
+  function formatMarketGold(value) {
+    const number = Math.max(0, Math.round(Number(value) || 0));
+
+    return number.toLocaleString();
   }
 
   async function prepareFirstMarketHealingOffer(options = {}) {
