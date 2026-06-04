@@ -19,6 +19,9 @@
   const MARKET_DEMO_QUEUE_KEY = "gladiatusMarketDemoSaleQueue";
   const MARKET_DEMO_CONTROLS_ID = "gladiatus-market-demo-controls";
   const MARKET_DEMO_STYLE_ID = "gladiatus-market-demo-style";
+  const MARKET_HEALING_ITEM_BASIS = new Set([
+    "food"
+  ]);
   let marketDemoMarkMode = false;
   let marketDemoQueueRunning = false;
 
@@ -611,6 +614,7 @@
     const tooltipText = getInventoryItemTooltipText(item.element);
     const valueGold = parseMarketInventoryValue(tooltipText);
     const merchantPrice = parseMarketMerchantPrice(tooltipText);
+    const basis = String(item.basis || "").toLowerCase();
     const estimatedSellValue = valueGold
       || (merchantPrice ? Math.round(merchantPrice * MARKET_SELL_BACK_RATIO) : null);
     const estimatedMerchantPrice = merchantPrice
@@ -622,6 +626,7 @@
     return {
       ...item,
       isHealing: Number.isFinite(item.healing) && item.healing > 0,
+      supported: MARKET_HEALING_ITEM_BASIS.has(basis),
       valueGold,
       merchantPrice,
       estimatedSellValue,
@@ -715,10 +720,10 @@
     const rawItem = resolveInventoryItem(itemOrId?.itemId || itemOrId);
     const item = rawItem ? enrichMarketHealingItem(rawItem) : null;
 
-    if (!item?.isHealing) {
+    if (!item?.isHealing || Number(item.estimatedSellValue) <= 0) {
       return {
         ok: false,
-        reason: "healing item not found"
+        reason: "healing item with value not found"
       };
     }
 
@@ -913,6 +918,7 @@
       itemId: item.itemId,
       title: item.title,
       basis: item.basis,
+      supported: item.supported,
       level: item.level,
       healing: item.healing,
       valueGold: item.valueGold,
