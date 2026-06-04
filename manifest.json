@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Gladiatus Market Demo",
+  "version": "0.1.0",
+  "description": "Small demo helper for pricing and preparing Gladiatus healing item market offers.",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.gladiatus.gameforge.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.gladiatus.gameforge.com/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ]
+}

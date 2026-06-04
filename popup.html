@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Market Demo</title>
+  <style>
+    body {
+      width: 300px;
+      margin: 0;
+      padding: 12px;
+      background: #24180f;
+      color: #f3e3c0;
+      font: 13px Arial, sans-serif;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    label {
+      display: grid;
+      grid-template-columns: 1fr 82px;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid #7b6244;
+      background: #120c08;
+      color: #f3e3c0;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 7px 8px;
+      border: 1px solid #9c7845;
+      background: #5b351c;
+      color: #fff4d7;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #704223;
+    }
+
+    #status {
+      min-height: 56px;
+      margin-top: 10px;
+      padding: 8px;
+      border: 1px solid #5d4630;
+      background: #160f0a;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Market Demo</h1>
+
+  <label>
+    Markup
+    <input id="markup" type="number" min="0" max="5" step="0.05" value="0.30">
+  </label>
+
+  <label>
+    Base price
+    <select id="pricingBasis">
+      <option value="health">1 HP = 1 gold</option>
+      <option value="merchant" selected>Vendor price</option>
+    </select>
+  </label>
+
+  <label>
+    Duration
+    <select id="duration">
+      <option value="1">2 h</option>
+      <option value="2">8 h</option>
+      <option value="3" selected>24 h</option>
+    </select>
+  </label>
+
+  <button id="scan">Scan Current Bag</button>
+  <button id="prepare">Put First Healing Item In Box</button>
+  <button id="submit">Submit Prepared Offer</button>
+
+  <div id="status">Open the Gladiatus market page, then scan or prepare an offer.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
