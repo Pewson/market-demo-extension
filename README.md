@@ -9,6 +9,14 @@ Small standalone Chrome extension demo for preparing Gladiatus healing items for
 3. Click `Load unpacked`.
 4. Select this folder: `market-demo-extension`.
 
+## Update
+
+Run `update-from-main.bat` to download the latest files from the `main` branch.
+
+- If this folder was installed with Git, the script runs `git pull`.
+- If this folder came from a GitHub ZIP download, the script downloads the latest ZIP and copies the files into this folder.
+- After updating, reload the extension on `chrome://extensions`.
+
 ## Use
 
 1. Open the Gladiatus market page.

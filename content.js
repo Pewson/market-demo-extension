@@ -21,6 +21,9 @@
   const MARKET_DEMO_CONTROLS_ID = "gladiatus-market-demo-controls";
   const MARKET_DEMO_STYLE_ID = "gladiatus-market-demo-style";
   const MARKET_DEMO_PRICE_PREVIEW_ID = "gladiatus-market-demo-price-preview";
+  const MARKET_INVENTORY_PINNED_CLASS = "gladiatus-market-demo-inventory-pinned";
+  const MARKET_PINNED_INVENTORY_ELEMENT_CLASS = "gladiatus-market-demo-pinned-inventory";
+  const MARKET_PINNED_SELL_ELEMENT_CLASS = "gladiatus-market-demo-pinned-sell";
   const MARKET_HEALING_ITEM_BASIS = new Set([
     "food"
   ]);
@@ -66,6 +69,16 @@
 
   function getInventoryBox() {
     return document.querySelector("#inv.inventory_box, #inv.ui-droppable-grid");
+  }
+
+  function getInventoryPinContainer() {
+    const inventory = getInventoryBox();
+
+    return inventory?.closest?.(".inventoryBox") || inventory;
+  }
+
+  function getMarketSellContainer() {
+    return document.querySelector("#market_sell");
   }
 
   function getMarketSellDropTarget() {
@@ -179,8 +192,70 @@
       .gladiatus-market-demo-marking #inv [data-tooltip][data-position-x][data-position-y] {
         cursor: crosshair !important;
       }
+
+      .${MARKET_INVENTORY_PINNED_CLASS} .inventoryBox,
+      .${MARKET_PINNED_INVENTORY_ELEMENT_CLASS} {
+        position: fixed !important;
+        top: 8px !important;
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        z-index: 10050 !important;
+        width: 256px !important;
+        min-width: 256px !important;
+        max-width: 256px !important;
+        background: transparent !important;
+        border: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+      }
+
+      .${MARKET_INVENTORY_PINNED_CLASS} .inventoryBox #inv,
+      .${MARKET_PINNED_INVENTORY_ELEMENT_CLASS}#inv,
+      .${MARKET_PINNED_INVENTORY_ELEMENT_CLASS} #inv {
+        outline: 1px solid rgba(244, 213, 138, 0.75) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+      }
+
+      .${MARKET_INVENTORY_PINNED_CLASS} .inventoryBox #itemOptions,
+      .${MARKET_INVENTORY_PINNED_CLASS} .inventoryBox .bag_buy_extend,
+      .${MARKET_INVENTORY_PINNED_CLASS} .inventoryBox #show-item-info,
+      .${MARKET_PINNED_INVENTORY_ELEMENT_CLASS} #itemOptions,
+      .${MARKET_PINNED_INVENTORY_ELEMENT_CLASS} .bag_buy_extend,
+      .${MARKET_PINNED_INVENTORY_ELEMENT_CLASS} #show-item-info {
+        display: none !important;
+      }
+
+      .${MARKET_INVENTORY_PINNED_CLASS} #market_sell,
+      .${MARKET_PINNED_SELL_ELEMENT_CLASS} {
+        position: fixed !important;
+        top: 8px !important;
+        right: 8px !important;
+        z-index: 10050 !important;
+      }
+
+      .${MARKET_INVENTORY_PINNED_CLASS} #market_sell .ui-droppable,
+      .${MARKET_PINNED_SELL_ELEMENT_CLASS} .ui-droppable {
+        outline: 1px solid rgba(244, 213, 138, 0.75) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+      }
     `;
     document.documentElement.appendChild(style);
+  }
+
+  function setMarketInventoryPinned(pinned) {
+    document.documentElement.classList.toggle(
+      MARKET_INVENTORY_PINNED_CLASS,
+      Boolean(pinned)
+    );
+    getInventoryPinContainer()?.classList.toggle(
+      MARKET_PINNED_INVENTORY_ELEMENT_CLASS,
+      Boolean(pinned)
+    );
+    getMarketSellContainer()?.classList.toggle(
+      MARKET_PINNED_SELL_ELEMENT_CLASS,
+      Boolean(pinned)
+    );
   }
 
   function installMarketDemoControls() {
@@ -985,20 +1060,47 @@
       };
     }
 
-    const from = getElementCenter(item.element);
-    const to = getElementCenter(target);
+    setMarketInventoryPinned(true);
 
-    simulateInventoryDrag(item.element, from, to);
-    await sleep(900);
+    try {
+      await ensureMoveEndpointsVisible(item.element, target);
 
-    const sellId = getMarketSellForm()?.querySelector('input[name="sellid"]')?.value || "";
-    const ok = Boolean(sellId) || Boolean(getMarketSellDropTarget()?.querySelector("[data-item-id], [data-tooltip]"));
+      const from = getElementCenter(item.element);
+      const to = getElementCenter(target);
 
-    return {
-      ok,
-      reason: ok ? "item placed in market sell slot" : "market sell slot did not accept item",
-      sellId
-    };
+      simulateInventoryDrag(item.element, from, to);
+      await sleep(900);
+
+      const sellId = getMarketSellForm()?.querySelector('input[name="sellid"]')?.value || "";
+      const ok = Boolean(sellId) || Boolean(getMarketSellDropTarget()?.querySelector("[data-item-id], [data-tooltip]"));
+
+      return {
+        ok,
+        reason: ok ? "item placed in market sell slot" : "market sell slot did not accept item",
+        sellId
+      };
+    } finally {
+      setMarketInventoryPinned(false);
+    }
+  }
+
+  async function ensureMoveEndpointsVisible(sourceElement, targetElement) {
+    sourceElement?.scrollIntoView?.({
+      block: "center",
+      inline: "nearest"
+    });
+    await sleep(120);
+
+    if (document.documentElement.classList.contains(MARKET_INVENTORY_PINNED_CLASS)) {
+      await sleep(80);
+      return;
+    }
+
+    targetElement?.scrollIntoView?.({
+      block: "center",
+      inline: "nearest"
+    });
+    await sleep(180);
   }
 
   function fillMarketSellForm({ price, duration = MARKET_DEFAULT_DURATION }) {
