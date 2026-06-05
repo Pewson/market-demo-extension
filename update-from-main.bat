@@ -5,29 +5,8 @@ set "ZIP_URL=https://github.com/Pewson/market-demo-extension/archive/refs/heads/
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
 set "CHECK_ROOT=%ROOT%"
+set "UNSAFE_OVERRIDE=0"
 
-call :validate_target_folder
-if errorlevel 1 goto :unsafe_target
-
-:menu
-cls
-echo.
-echo Gladiatus Market Demo updater
-echo Folder: %ROOT%
-echo.
-echo Keep this updater inside the bot extension folder.
-echo.
-echo 1. Use Git fetch/reset
-echo 2. Download latest ZIP
-echo Q. Exit
-echo.
-choice /C 12Q /N /M "Choose an option: "
-
-if errorlevel 3 goto :exit
-if errorlevel 2 goto :zip_update
-if errorlevel 1 goto :git_update
-
-:validate_target_folder
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$root=$env:CHECK_ROOT;" ^
   "$name=Split-Path -Leaf $root;" ^
@@ -38,7 +17,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$effectivelyEmpty=$items.Count -eq 0;" ^
   "if ($marker -or $extensionFiles -or ($allowedName -and $effectivelyEmpty)) { exit 0 };" ^
   "exit 1"
-exit /b %ERRORLEVEL%
+if not errorlevel 1 goto :menu
 
 :unsafe_target
 cls
@@ -46,7 +25,7 @@ echo.
 echo Gladiatus Market Demo updater
 echo Folder: %ROOT%
 echo.
-echo This does not look like the bot extension folder.
+echo WARNING: This does not look like the bot extension folder.
 echo.
 echo Put update-from-main.bat inside a dedicated bot folder before running it.
 echo The updater is allowed to run only when one of these is true:
@@ -56,8 +35,41 @@ echo - The folder contains content.js and manifest.json
 echo - The folder is empty except for this updater and its name contains "bot"
 echo - The folder is empty except for this updater and is named "market-demo-extension"
 echo.
-echo Refusing to continue so files are not copied into Desktop, Downloads, or another broad folder.
-goto :end
+echo If you continue, the ZIP update can copy bot files into this folder.
+echo This is dangerous if this is Desktop, Downloads, Documents, or another shared folder.
+echo.
+echo 1. Yes, I am sure this is the folder where I want the bot extracted
+echo 2. No, exit
+echo.
+set "UNSAFE_CHOICE="
+set /p "UNSAFE_CHOICE=Continue anyway? "
+if not "%UNSAFE_CHOICE%"=="1" goto :exit
+set "UNSAFE_OVERRIDE=1"
+goto :menu
+
+:menu
+cls
+echo.
+echo Gladiatus Market Demo updater
+echo Folder: %ROOT%
+echo.
+echo Keep this updater inside the bot extension folder.
+if "%UNSAFE_OVERRIDE%"=="1" (
+  echo.
+  echo WARNING: Unsafe folder override is active for this run.
+)
+echo.
+echo 1. Use Git fetch/reset
+echo 2. Download latest ZIP
+echo Q. Exit
+echo.
+set "MENU_CHOICE="
+set /p "MENU_CHOICE=Choose an option: "
+
+if /I "%MENU_CHOICE%"=="Q" goto :exit
+if "%MENU_CHOICE%"=="2" goto :zip_update
+if "%MENU_CHOICE%"=="1" goto :git_update
+goto :exit
 
 :git_update
 echo.

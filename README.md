@@ -13,9 +13,13 @@ Small standalone Chrome extension demo for preparing Gladiatus healing items for
 
 Run `update-from-main.bat` to download the latest files from the `main` branch.
 
-- If this folder was installed with Git, the script runs `git pull`.
-- If this folder came from a GitHub ZIP download, the script downloads the latest ZIP and copies the files into this folder.
+- Put `update-from-main.bat` inside the bot extension folder before running it. If the folder does not look like the bot folder, the updater shows a warning and asks for confirmation before it allows update options.
+- Press `1` to use Git. This fetches `main` and restores tracked files to that version.
+- Press `2` to download the latest ZIP from GitHub and copy the files into this folder. This option does not require Git.
+- Press `Q` to exit.
 - After updating, reload the extension on `chrome://extensions`.
+
+The updater is meant for normal extension users, not local development. In a Git checkout, it restores tracked files to the latest `main` version, so local edits to extension files will be replaced.
 
 ## Use
 
