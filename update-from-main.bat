@@ -4,12 +4,18 @@ setlocal
 set "ZIP_URL=https://github.com/Pewson/market-demo-extension/archive/refs/heads/main.zip"
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
+set "CHECK_ROOT=%ROOT%"
+
+call :validate_target_folder
+if errorlevel 1 goto :unsafe_target
 
 :menu
 cls
 echo.
 echo Gladiatus Market Demo updater
 echo Folder: %ROOT%
+echo.
+echo Keep this updater inside the bot extension folder.
 echo.
 echo 1. Use Git fetch/reset
 echo 2. Download latest ZIP
@@ -20,6 +26,38 @@ choice /C 12Q /N /M "Choose an option: "
 if errorlevel 3 goto :exit
 if errorlevel 2 goto :zip_update
 if errorlevel 1 goto :git_update
+
+:validate_target_folder
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$root=$env:CHECK_ROOT;" ^
+  "$name=Split-Path -Leaf $root;" ^
+  "$marker=Test-Path (Join-Path $root '.market-demo-extension');" ^
+  "$extensionFiles=(Test-Path (Join-Path $root 'content.js')) -and (Test-Path (Join-Path $root 'manifest.json'));" ^
+  "$allowedName=$name -match '^(market-demo-extension|.*bot.*)$';" ^
+  "$items=@(Get-ChildItem -LiteralPath $root -Force | Where-Object { $_.Name -notin @('update-from-main.bat','.git') });" ^
+  "$effectivelyEmpty=$items.Count -eq 0;" ^
+  "if ($marker -or $extensionFiles -or ($allowedName -and $effectivelyEmpty)) { exit 0 };" ^
+  "exit 1"
+exit /b %ERRORLEVEL%
+
+:unsafe_target
+cls
+echo.
+echo Gladiatus Market Demo updater
+echo Folder: %ROOT%
+echo.
+echo This does not look like the bot extension folder.
+echo.
+echo Put update-from-main.bat inside a dedicated bot folder before running it.
+echo The updater is allowed to run only when one of these is true:
+echo.
+echo - The folder contains .market-demo-extension
+echo - The folder contains content.js and manifest.json
+echo - The folder is empty except for this updater and its name contains "bot"
+echo - The folder is empty except for this updater and is named "market-demo-extension"
+echo.
+echo Refusing to continue so files are not copied into Desktop, Downloads, or another broad folder.
+goto :end
 
 :git_update
 echo.
